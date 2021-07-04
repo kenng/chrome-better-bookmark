@@ -1,4 +1,5 @@
-var categoryNodes = [];
+var categoryNodesArr = [];
+var categoryNodesMap = {};
 var wrapper;
 var focusedElement;
 var fuzzySearch;
@@ -8,26 +9,57 @@ var DOWN_KEYCODE = 40;
 var UP_KEYCODE = 38;
 var CONFIRM_KEYCODE = 13;
 
-function filterRecursively(nodeArray, childrenProperty, filterFn, results) {
+
+function isCategory(node) {
+    // a bookmark should have url, otherwise it is category
+    return !node.url && node.id > 0;
+}
+
+function getParentTitle(node) {
+    if (!node) {
+        // console.trace('undefined node');
+        return '';
+    }
+
+    let title = `${node.title} > `;
+    if (node.parentId === '0') return '';
+
+    const parentNode = categoryNodesMap[node.parentId];
+    if (!parentNode) {
+        console.warn('parent node missing: ', node);
+    }
+    title = getParentTitle(parentNode) + title;
+    return title;
+}
+
+function filterRecursively(nodeArray, results) {
 
   results = results || [];
 
   nodeArray.forEach( function( node ) {
-    if (filterFn(node)) results.push( node );
-    if (node.children) filterRecursively(node.children, childrenProperty, filterFn, results);
+    // save the node if it, then loop into node children
+    if (isCategory(node)) {
+      categoryNodesArr.push(node)
+      categoryNodesMap[node.id] = node;
+    }
+
+    if (node.children) {
+      filterRecursively(node.children, results);
+    }
   });
 
-  return results;
 
 };
 
 function createUiElement(node) {
 
-  var el = document.createElement("span");
+  const el = document.createElement("div");
+  el.className = 'iw-result'
   el.setAttribute("data-id", node.id);
   el.setAttribute("data-count", node.children.length);
   el.setAttribute("data-title", node.title);
-  el.innerHTML = node.title;
+
+  el.innerHTML = `<span class='iw-parent-title'>${node.parentTitle}</span><span>${node.title}</span>`;
 
   return el;
 
@@ -88,13 +120,12 @@ function getCurrentUrlData(callbackFn) {
 }
 
 function createUiFromNodes( categoryNodes ) {
-
   var categoryUiElements = [];
   currentNodeCount = categoryNodes.length;
 
-  categoryNodes.forEach( function( node ) {
-    categoryUiElements.push( createUiElement(node) );
-  })
+  categoryNodes.forEach(function (node) {
+      categoryUiElements.push(createUiElement(node));
+  });
 
   categoryUiElements.forEach( function( element ) {
     wrapper.appendChild( element );
@@ -120,7 +151,8 @@ function focusItem(index) {
 
 function addCreateCategoryButton(categoryName) {
 
-  var el = document.createElement("span");
+  var el = document.createElement("div");
+  el.className = 'iw-result'
   el.setAttribute("data-id", "NEW");
   el.setAttribute("data-title", categoryName);
   el.classList.add("create");
@@ -131,35 +163,39 @@ function addCreateCategoryButton(categoryName) {
 
 }
 
+
 function createInitialTree() {
 
   chrome.bookmarks.getTree( function(t) {
+      wrapper = document.getElementById('wrapper');
 
-    wrapper = document.getElementById("wrapper");
+      var options = {
+          keys: ['title'],
+          threshold: 0.4,
+      };
 
-    var options = {
-      keys: ['title'],
-      threshold: 0.4
-    }
-    
-    categoryNodes = filterRecursively(t, "children", function(node) {
-      return !node.url && node.id > 0;
-    }).sort(function(a, b) {
-      return b.dateGroupModified - a.dateGroupModified;
-    })
+      filterRecursively(t)
 
-    createUiFromNodes( categoryNodes );
+      categoryNodesArr.sort(function (a, b) {
+          return b.dateGroupModified - a.dateGroupModified;
+        });
 
-    wrapper.style.width = wrapper.clientWidth + "px";
+      categoryNodesArr.forEach(node => {
+          node.parentTitle = getParentTitle(categoryNodesMap[node.parentId]);
+      });
+      delete categoryNodesMap;
 
-    if (currentNodeCount > 0) focusItem(0);
+      createUiFromNodes(categoryNodesArr);
 
-    fuzzySearch = new Fuse(categoryNodes, options);
+      wrapper.style.width = wrapper.clientWidth + 'px';
 
-    wrapper.addEventListener("click", function(e) {
-      triggerClick(e.target);
-    })
+      if (currentNodeCount > 0) focusItem(0);
 
+      fuzzySearch = new Fuse(categoryNodesArr, options);
+
+      wrapper.addEventListener('click', function (e) {
+          triggerClick(e.target);
+      });
   });
 
 }
@@ -175,29 +211,28 @@ function createInitialTree() {
 
   searchElement.addEventListener("keydown", function(e) {
 
-    if (e.keyCode == UP_KEYCODE) {
+    if (e.code == UP_KEYCODE) {
       e.preventDefault();
       index = index - 1;
       if (index < 0) index = currentNodeCount - 1;
       focusItem(index);
 
-    } else if (e.keyCode == DOWN_KEYCODE) {
+    } else if (e.code == DOWN_KEYCODE) {
       e.preventDefault();
       index = index + 1;
       if (index >= currentNodeCount) index = 0;
       focusItem(index);
 
-    } else if (e.keyCode == CONFIRM_KEYCODE) {
-      if (currentNodeCount > 0) triggerClick(focusedElement);
-    
+    } else if (e.code == CONFIRM_KEYCODE) {
+        if (currentNodeCount > 0) triggerClick(focusedElement);
     } else {
       // to get updated input value, we need to schedule it to the next tick
       setTimeout( function() {
         text = document.getElementById("search").value;
         if (text.length) {
           newNodes = fuzzySearch.search(text);
-          resetUi(); 
-          createUiFromNodes(newNodes) 
+          resetUi();
+          createUiFromNodes(newNodes);
           if (newNodes.length) focusItem(0);
 
           if (!newNodes.length || text !== newNodes[0].title) {
@@ -206,7 +241,7 @@ function createInitialTree() {
 
         } else {
           resetUi();
-          createUiFromNodes(categoryNodes);
+          createUiFromNodes(categoryNodesArr);
           if (currentNodeCount > 0) focusItem(0);
         }
         index = 0;

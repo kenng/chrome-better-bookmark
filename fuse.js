@@ -296,9 +296,10 @@
                 for (i = 0; i < dataLen; i++) {
                     item = list[i];
                     // Iterate over every key
-                    for (j = 0; j < keys.length; j++) {
-                        analyzeText(item[keys[j]], item, i);
-                    }
+                    // for (j = 0; j < keys.length; j++) {
+                    //     analyzeText(item[keys[j]], item, i);
+                    // }
+                    analyzeText(item.title, item, i);
                 }
             }
 
