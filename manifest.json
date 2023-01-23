@@ -1,46 +1,37 @@
 {
-  "manifest_version": 2,
-
+  "manifest_version": 3,
   "name": "Better Bookmark",
   "description": "Easily add bookmarks to any category. Includes spotlight-like search with mouse/keyboard support. Default key: cmd+b (win:ctrl+b)",
   "version": "1.3.1",
   "author": "Szymon Pilkowski",
   "homepage_url": "https://github.com/ardcore/chrome-better-bookmark",
   "default_locale": "en",
-
   "background": {
-    "page": "init.html"
+      "service_worker": "init.js"
   },
-
-  "icons": { 
-    "16": "bookmark.png",
-    "48": "bookmark.png",
-    "128": "bookmark.png" 
+  "icons": {
+      "16": "bookmark.png",
+      "48": "bookmark.png",
+      "128": "bookmark.png"
   },
-
-  "browser_action": {
-    "default_icon": {
-      "19": "bookmark.png",
-      "38": "bookmark.png"
-    },
-    "default_title": "Better Bookmark Button",
-    "default_popup": "background.html"
+  "action": {
+      "default_icon": {
+          "19": "bookmark.png",
+          "38": "bookmark.png"
+      },
+      "default_title": "Better Bookmark Button",
+      "default_popup": "background.html"
   },
   "commands": {
-    "_execute_browser_action": {
-
-      "suggested_key": {
-        "default": "Ctrl+B",
-        "windows": "Ctrl+B",
-        "mac": "Command+B",
-        "chromeos": "Ctrl+B",
-        "linux": "Ctrl+B"
+      "_execute_browser_action": {
+          "suggested_key": {
+              "default": "Ctrl+B",
+              "windows": "Ctrl+B",
+              "mac": "Command+B",
+              "chromeos": "Ctrl+B",
+              "linux": "Ctrl+B"
+          }
       }
-    }
   },
-
-  "permissions": [
-    "bookmarks",
-    "tabs"
-  ]
+  "permissions": ["bookmarks", "tabs"]
 }
